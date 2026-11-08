@@ -1,0 +1,70 @@
+name: link-checker
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - README.md
+      - lychee.toml
+      - .github/workflows/link-checker.yml
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+  schedule:
+    - cron: "12 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore lychee cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .lycheecache
+          key: cache-lychee-${{ runner.os }}-${{ hashFiles('lychee.toml') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: cache-lychee-${{ runner.os }}-${{ hashFiles('lychee.toml') }}-
+
+      - name: Link Checker
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --config ./lychee.toml README.md
+
+  check-pr-diff:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Lychee
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          lycheeVersion: v0.24.2
+          args: --version
+          failIfEmpty: false
+          jobSummary: false
+
+      - name: Test added-link validation
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+
+      - name: Check newly introduced README links
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/scripts/check_new_links.py "$BASE_SHA" "$HEAD_SHA"

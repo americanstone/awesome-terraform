@@ -1,0 +1,41 @@
+# Lychee link checker configuration
+
+# Maximum number of retries per link
+max_retries = 3
+
+# Wait time between retries (in seconds)
+retry_wait_time = 5
+
+# Maximum number of concurrent network requests
+max_concurrency = 10
+
+# Accept 429 status codes (rate limiting) as valid; this does not verify the link
+# This prevents CI failures due to temporary rate limits
+accept = [200, 204, 206, 429]
+
+# Exclude flaky or bot-blocked hosts while keeping links in README
+exclude = [
+  # Verified content on 2026-09-09; Lychee receives bot-blocking 403/202 responses.
+  '^https://blog\.stephane-robert\.info/docs/infra-as-code/provisionnement/terraform/?$',
+  '^https://jfrog\.com/artifactory/?$',
+  '^https://www\.oreilly\.com/library/view/infrastructure-as-code/9781491924334/?$',
+  # These pages serve valid content to curl but reject Lychee with 403 (2026-09-06).
+  '^https://devopslesson\.com/playground/terraform/?$',
+  '^https://devopslesson\.com/tutorials/terraform/introduction-to-terraform/?$',
+  "^https://web\\.archive\\.org/.*",
+  "^https://(betterprogramming\\.pub|blog\\.pelo\\.tech|medium\\.com)/.*",
+]
+
+# Alternative: Exclude hashicorp.com if rate limiting persists
+# WARNING: uncommenting the line below REPLACES the entire exclude array above,
+# not adds to it. Add hashicorp.com as an additional entry in the array instead.
+# exclude = ['https://www\.hashicorp\.com/.*']
+
+# Cache results to avoid repeated checks
+cache = true
+max_cache_age = "7d"
+# Recheck rate-limited links on the next run instead of caching them as healthy.
+cache_exclude_status = [429]
+
+# Use a custom user agent to be more identifiable
+user_agent = "awesome-tf link checker (https://github.com/shuaibiyy/awesome-tf)"
